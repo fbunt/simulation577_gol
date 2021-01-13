@@ -121,9 +121,8 @@ class GOLAnimation:
         return (self.im,)
 
     def update(self, *args):
-        state = self.sim.step()
-        # Swap
-        self.im.set_data(state)
+        self.sim.step()
+        self.im.set_data(self.sim.state)
         return (self.im,)
 
     def run(self):
