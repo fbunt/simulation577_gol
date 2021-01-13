@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 from matplotlib.animation import FuncAnimation
 from scipy.ndimage import correlate
 
@@ -47,22 +48,18 @@ def init_pentadecathlon(shape):
     return state
 
 
+def init_acorn(shape):
+    state = np.zeros(shape, dtype=np.uint8)
+    i = shape[0] // 2
+    j = shape[1] // 2
+    state[i, j] = 1
+    state[i - 1, j - 2] = 1
+    state[i + 1, j - 3 : j + 4] = 1
+    state[i + 1, j - 1 : j + 1] = 0
+    return state
+
+
 NEIGHBOR_KERN = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=np.uint8)
-
-
-def step(state, count, next_state):
-    next_state[:] = 0
-    correlate(state, NEIGHBOR_KERN, output=count, mode="wrap")
-    dead = state == 0
-    living = state == 1
-    count3 = count == 3
-    # Rule 1
-    rule = living & ((count == 2) | count3)
-    next_state[rule] = 1
-    # Rule 2
-    rule = dead & count3
-    next_state[rule] = 1
-    return next_state
 
 
 class GOLSimulation:
@@ -70,11 +67,26 @@ class GOLSimulation:
         self.state = initial_state
         self.count = np.zeros_like(self.state)
         self.next_state = np.zeros_like(self.state)
+        self.density = [initial_state.sum() / initial_state.size]
 
     def step(self):
-        step(self.state, self.count, self.next_state)
+        self._step()
         self.state, self.next_state = self.next_state, self.state
+        self.density.append(self.state.sum() / self.state.size)
         return self.state
+
+    def _step(self):
+        self.next_state[:] = 0
+        correlate(self.state, NEIGHBOR_KERN, output=self.count, mode="wrap")
+        dead = self.state == 0
+        living = self.state == 1
+        count3 = self.count == 3
+        # Rules 2 & 3
+        rule = living & ((self.count == 2) | count3)
+        self.next_state[rule] = 1
+        # Rule 4
+        rule = dead & count3
+        self.next_state[rule] = 1
 
 
 class GOLAnimation:
@@ -108,6 +120,19 @@ class GOLAnimation:
         plt.show()
 
 
+def density_plot(sim):
+    sns.set_theme()
+    # sns.set_style("white")
+    # sns.set_style("ticks")
+    plt.figure()
+    plt.plot(sim.density)
+    plt.title("Density Over Time")
+    plt.xlabel("Generation")
+    plt.ylabel("Density")
+    sns.despine()
+    plt.show()
+
+
 def main():
     n = 400
     shape = (n, n)
@@ -117,9 +142,11 @@ def main():
     # state = init_beehive(shape)
     # state = init_glider(shape)
     # state = init_pentadecathlon(shape)
+    # state = init_acorn(shape)
     sim = GOLSimulation(state)
     animation = GOLAnimation(sim, 1)
     animation.run()
+    density_plot(sim)
 
 
 if __name__ == "__main__":
