@@ -59,6 +59,23 @@ def init_acorn(shape):
     return state
 
 
+def init_24827M(shape):
+    state = np.zeros(shape, dtype=np.uint8)
+    i = shape[0] // 2
+    j = shape[1] // 2
+    state[i - 3, j + 2] = 1
+    state[i - 2, j - 1] = 1
+    state[i - 2, j + 1] = 1
+    state[i - 1, j - 4] = 1
+    state[i - 1, j + 1] = 1
+    state[i, j - 3 : j - 1] = 1
+    state[i + 1, j - 2] = 1
+    state[i + 1, j] = 1
+    state[i + 2, j - 1] = 1
+    state[i + 3, j + 1 : j + 4] = 1
+    return state
+
+
 NEIGHBOR_KERN = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=np.uint8)
 
 
@@ -143,6 +160,7 @@ def main():
     # state = init_glider(shape)
     # state = init_pentadecathlon(shape)
     # state = init_acorn(shape)
+    # state = init_24827M(shape)
     sim = GOLSimulation(state)
     animation = GOLAnimation(sim, 1)
     animation.run()
