@@ -159,8 +159,6 @@ class GOLAnimation:
 
 def density_plot(sim):
     sns.set_theme()
-    # sns.set_style("white")
-    # sns.set_style("ticks")
     plt.figure()
     plt.plot(sim.density)
     plt.title("Density Over Time")
