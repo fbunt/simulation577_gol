@@ -6,10 +6,15 @@ from scipy.ndimage import correlate
 
 
 def random_init(shape, p=0.2):
+    """Populate the state randomly using probability p """
     return (np.random.random(shape) < p).astype(np.uint8)
 
 
 def block_init(shape):
+    """Initialize state with the block formation
+
+    https://www.conwaylife.com/wiki/Block
+    """
     state = np.zeros(shape, dtype=np.uint8)
     i = shape[0] // 2
     j = shape[1] // 2
@@ -18,6 +23,10 @@ def block_init(shape):
 
 
 def init_beehive(shape):
+    """Initialize state with the beehive formation
+
+    https://www.conwaylife.com/wiki/Beehive
+    """
     state = np.zeros(shape, dtype=np.uint8)
     i = shape[0] // 2
     j = shape[1] // 2
@@ -29,6 +38,10 @@ def init_beehive(shape):
 
 
 def init_glider(shape):
+    """Initialize state with the glider formation
+
+    https://www.conwaylife.com/wiki/Glider
+    """
     state = np.zeros(shape, dtype=np.uint8)
     i = shape[0] // 2
     j = shape[1] // 2
@@ -39,6 +52,10 @@ def init_glider(shape):
 
 
 def init_pentadecathlon(shape):
+    """Initialize state with the pentadecathlon formation
+
+    https://www.conwaylife.com/wiki/Pentadecathlon
+    """
     state = np.zeros(shape, dtype=np.uint8)
     i = shape[0] // 2
     j = shape[1] // 2
@@ -49,6 +66,10 @@ def init_pentadecathlon(shape):
 
 
 def init_acorn(shape):
+    """Initialize state with the acorn formation
+
+    https://www.conwaylife.com/wiki/Acorn
+    """
     state = np.zeros(shape, dtype=np.uint8)
     i = shape[0] // 2
     j = shape[1] // 2
