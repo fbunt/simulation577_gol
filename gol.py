@@ -1,3 +1,4 @@
+import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -97,6 +98,10 @@ def init_24827M(shape):
     return state
 
 
+def density_calc(state):
+    return state.sum() / state.size
+
+
 NEIGHBOR_KERN = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=np.uint8)
 
 
@@ -106,11 +111,24 @@ class GOLSimulation:
         self.count = np.zeros_like(self.state)
         self.next_state = np.zeros_like(self.state)
         self.density = [initial_state.sum() / initial_state.size]
+        self.density_t = []
+        self.density_tp1 = []
 
     def step(self):
-        self._step()
-        self.state, self.next_state = self.next_state, self.state
-        self.density.append(self.state.sum() / self.state.size)
+        try:
+            self._step()
+            self.density_t.append(density_calc(self.state))
+            self.density_tp1.append(density_calc(self.next_state))
+            # Swap to update current state
+            self.state, self.next_state = self.next_state, self.state
+            self.density.append(density_calc(self.state))
+        except KeyboardInterrupt as e:
+            # Trim in case the simulation was stopped between appends
+            if len(self.sim.density_t) > len(self.sim.density_tp1):
+                self.sim.density_t.pop()
+            elif len(self.sim.density_tp1) > len(self.sim.density_t):
+                self.sim.density_tp1.pop()
+            raise e
         return self.state
 
     def _step(self):
@@ -127,13 +145,35 @@ class GOLSimulation:
         self.next_state[rule] = 1
 
 
-class GOLAnimation:
-    def __init__(self, sim, interval):
+class SimulationRunner:
+    def __init__(self, sim, max_iter):
+        self.sim = sim
+        self.max_iter = max_iter
+
+    def run(self):
+        try:
+            i = 1
+            while i < self.max_iter:
+                self.sim.step()
+                i += 1
+        except KeyboardInterrupt:
+            pass
+
+
+class MaxIterException(Exception):
+    pass
+
+
+class SimulationAnimation:
+    def __init__(self, sim, interval, max_iter):
         self.sim = sim
         self.fig = plt.figure()
         self.im = None
         self.ani = None
         self.interval = interval
+        self.max_iter = max_iter
+        self.iter = 1
+        self.paused = False
 
     def init(self):
         self.im = plt.imshow(
@@ -144,9 +184,24 @@ class GOLAnimation:
     def update(self, *args):
         self.sim.step()
         self.im.set_data(self.sim.state)
+        self.iter += 1
+        if self.iter > self.max_iter:
+            self.ani.event_source.stop()
+            plt.close()
         return (self.im,)
 
+    def on_click(self, event):
+        if event.key != " ":
+            return
+        if self.paused:
+            self.ani.event_source.start()
+            self.paused = False
+        else:
+            self.ani.event_source.stop()
+            self.paused = True
+
     def run(self):
+        self.fig.canvas.mpl_connect("key_press_event", self.on_click)
         self.ani = FuncAnimation(
             self.fig,
             self.update,
@@ -158,20 +213,66 @@ class GOLAnimation:
 
 
 def density_plot(sim):
-    sns.set_theme()
+    sns.set_style("whitegrid")
     plt.figure()
     plt.plot(sim.density)
     plt.title("Density Over Time")
     plt.xlabel("Generation")
     plt.ylabel("Density")
-    sns.despine()
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, aspect="equal")
+    ax.plot(sim.density_tp1, sim.density_t)
+    plt.title("Density(t+1) vs Density(t)")
+    plt.xlabel("Density(t+1)")
+    plt.ylabel("Density(t)")
+
     plt.show()
 
 
-def main():
-    n = 400
+def get_cli_parser():
+    p = argparse.ArgumentParser()
+    p.add_argument(
+        "-p",
+        "--prob",
+        type=float,
+        default=0.5,
+        help="Probability of cells starting alive. Default: 0.5",
+    )
+    p.add_argument(
+        "-n",
+        "--grid_size",
+        type=int,
+        default=400,
+        help="Grid size. Default: 400",
+    )
+    p.add_argument(
+        "-i",
+        "--interval",
+        type=int,
+        default=1,
+        help="Minimum animation frame interval in ms. Default: 1ms",
+    )
+    p.add_argument(
+        "-s",
+        "--headless",
+        action="store_true",
+        help="Run simulation without animation",
+    )
+    p.add_argument(
+        "-m",
+        "--max_iter",
+        type=float,
+        default=np.inf,
+        help="Max number of iterations. Default: inf",
+    )
+    return p
+
+
+def main(args):
+    n = args.grid_size
     shape = (n, n)
-    p = 0.1
+    p = args.prob
     state = random_init(shape, p=p)
     # state = init_block(shape)
     # state = init_beehive(shape)
@@ -180,10 +281,15 @@ def main():
     # state = init_acorn(shape)
     # state = init_24827M(shape)
     sim = GOLSimulation(state)
-    animation = GOLAnimation(sim, 1)
-    animation.run()
-    density_plot(sim)
+    runner = None
+    if args.headless:
+        runner = SimulationRunner(sim, args.max_iter)
+    else:
+        runner = SimulationAnimation(sim, args.interval, args.max_iter)
+    runner.run()
+    # density_plot(sim)
 
 
 if __name__ == "__main__":
-    main()
+    args = get_cli_parser().parse_args()
+    main(args)
